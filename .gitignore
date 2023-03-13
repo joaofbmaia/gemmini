@@ -343,3 +343,8 @@ configs/
 generated-src/
 waveforms/
 
+# VSCode Metals
+**/.bloop
+**/.metals
+**/.vscode
+metals.sbt
