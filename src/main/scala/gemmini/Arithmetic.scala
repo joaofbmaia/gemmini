@@ -35,6 +35,7 @@ abstract class ArithmeticOps[T <: Data](self: T) {
   def -(t: T): T
   def >>(u: UInt): T // This is a rounding shift! Rounds away from 0
   def >(t: T): Bool
+  def ===(t: T): Bool
   def identity: T
   def withWidthOf(t: T): T
   def clippedToWidthOf(t: T): T // Like "withWidthOf", except that it saturates
@@ -72,6 +73,8 @@ object Arithmetic {
 
       override def >(t: UInt): Bool = self > t
 
+      override def ===(t: UInt): Bool = self === t
+
       override def withWidthOf(t: UInt) = self.asTypeOf(t)
 
       override def clippedToWidthOf(t: UInt) = {
@@ -108,6 +111,8 @@ object Arithmetic {
       }
 
       override def >(t: SInt): Bool = self > t
+
+      override def ===(t: SInt): Bool = self === t
 
       override def withWidthOf(t: SInt) = {
         if (self.getWidth >= t.getWidth)
@@ -486,6 +491,26 @@ object Arithmetic {
         comparator.io.gt
       }
 
+      override def ===(t: Float): Bool = {
+        // Recode all operands
+        val t_rec = recFNFromFN(t.expWidth, t.sigWidth, t.bits)
+        val self_rec = recFNFromFN(self.expWidth, self.sigWidth, self.bits)
+
+        // Resize t to self's width
+        val t_resizer = Module(new RecFNToRecFN(t.expWidth, t.sigWidth, self.expWidth, self.sigWidth))
+        t_resizer.io.in := t_rec
+        t_resizer.io.roundingMode := consts.round_near_even
+        t_resizer.io.detectTininess := consts.tininess_afterRounding
+        val t_rec_resized = t_resizer.io.out
+
+        val comparator = Module(new CompareRecFN(self.expWidth, self.sigWidth))
+        comparator.io.a := self_rec
+        comparator.io.b := t_rec_resized
+        comparator.io.signaling := false.B
+
+        comparator.io.eq
+      }
+
       override def withWidthOf(t: Float): Float = {
         val self_rec = recFNFromFN(self.expWidth, self.sigWidth, self.bits)
 
@@ -535,6 +560,8 @@ object Arithmetic {
       override def -(t: DummySInt) = self.dontCare
       override def >>(t: UInt) = self.dontCare
       override def >(t: DummySInt): Bool = false.B
+
+      override def ===(t: DummySInt): Bool = false.B
       override def identity = self.dontCare
       override def withWidthOf(t: DummySInt) = self.dontCare
       override def clippedToWidthOf(t: DummySInt) = self.dontCare
