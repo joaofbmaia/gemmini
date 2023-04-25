@@ -14,6 +14,9 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
   val B = rand.nextInt()
   val C = rand.nextInt()
   val ACC_REG = rand.nextInt()
+  val A_alt = rand.nextInt(255) - 128
+  val B_alt = rand.nextInt()
+  val ACC_REG_alt = rand.nextInt()
 
   it should "MUL" in {
     test(new ModPE(CommonInterconnectConfigs.DefaultICConfig)) { dut =>
@@ -33,6 +36,10 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
       dut.io.control.fu_control.sel_m.poke(MMuxSel.BIG_ALU)
       dut.io.control.fu_control.minus_a.poke(false)
       dut.io.control.fu_control.minus_m.poke(false)
+
+      dut.io.control.use_double_buffer.poke(false)
+      dut.io.control.double_buffer_sel.poke(0.U)
+      dut.io.valid.poke(true)
 
       dut.clock.step(1)
       dut.io.out.expect(A * B)
@@ -58,6 +65,10 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
       dut.io.control.fu_control.minus_a.poke(false)
       dut.io.control.fu_control.minus_m.poke(false)
 
+      dut.io.control.use_double_buffer.poke(false)
+      dut.io.control.double_buffer_sel.poke(0.U)
+      dut.io.valid.poke(true)
+
       dut.clock.step(1)
       dut.io.out.expect(A + B)
     }
@@ -81,6 +92,10 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
       dut.io.control.fu_control.sel_m.poke(MMuxSel.BIG_ALU)
       dut.io.control.fu_control.minus_a.poke(false)
       dut.io.control.fu_control.minus_m.poke(false)
+
+      dut.io.control.use_double_buffer.poke(false)
+      dut.io.control.double_buffer_sel.poke(0.U)
+      dut.io.valid.poke(true)
 
       dut.clock.step(1)
       dut.io.out.expect(A - B)
@@ -106,6 +121,10 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
       dut.io.control.fu_control.minus_a.poke(false)
       dut.io.control.fu_control.minus_m.poke(false)
 
+      dut.io.control.use_double_buffer.poke(false)
+      dut.io.control.double_buffer_sel.poke(0.U)
+      dut.io.valid.poke(true)
+
       dut.clock.step(1)
       dut.io.out.expect(A * B + C)
     }
@@ -129,6 +148,10 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
       dut.io.control.fu_control.sel_m.poke(MMuxSel.BIG_ALU)
       dut.io.control.fu_control.minus_a.poke(false)
       dut.io.control.fu_control.minus_m.poke(false)
+
+      dut.io.control.use_double_buffer.poke(false)
+      dut.io.control.double_buffer_sel.poke(0.U)
+      dut.io.valid.poke(true)
 
       dut.clock.step(1)
       dut.io.out.expect(A * B - C)
@@ -154,6 +177,10 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
       dut.io.control.fu_control.minus_a.poke(false)
       dut.io.control.fu_control.minus_m.poke(false)
 
+      dut.io.control.use_double_buffer.poke(false)
+      dut.io.control.double_buffer_sel.poke(0.U)
+      dut.io.valid.poke(true)
+
       dut.clock.step(1)
       dut.io.out.expect(A - B + C)
     }
@@ -177,6 +204,10 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
       dut.io.control.fu_control.sel_m.poke(MMuxSel.BIG_ALU)
       dut.io.control.fu_control.minus_a.poke(false)
       dut.io.control.fu_control.minus_m.poke(true)
+
+      dut.io.control.use_double_buffer.poke(false)
+      dut.io.control.double_buffer_sel.poke(0.U)
+      dut.io.valid.poke(true)
 
       dut.clock.step(1)
       dut.io.out.expect(-(A * B) + C)
@@ -202,6 +233,10 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
       dut.io.control.fu_control.minus_a.poke(false)
       dut.io.control.fu_control.minus_m.poke(true)
 
+      dut.io.control.use_double_buffer.poke(false)
+      dut.io.control.double_buffer_sel.poke(0.U)
+      dut.io.valid.poke(true)
+
       dut.clock.step(1)
       dut.io.out.expect(-(A * B) - C)
     }
@@ -209,15 +244,16 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
 
   it should "MADD2" in {
     test(new ModPE(CommonInterconnectConfigs.DefaultICConfig)) { dut =>
-      dut.io.in_v_bcast.poke(B)
-      dut.io.in_h_bcast.poke(A)
+      dut.io.in_v_bcast.poke(0.S)
+      dut.io.in_h_bcast.poke(0.S)
       dut.io.in_v.poke(ACC_REG)
       dut.io.in_h.poke(0.S)
       dut.io.in_d.poke(C)
 
-      dut.io.control.sel_a.poke(PEMuxSel.ZERO)
-      dut.io.control.sel_b.poke(PEMuxSel.ZERO)
-      dut.io.control.sel_c.poke(PEMuxSel.V)
+      dut.io.control.sel_a.poke(PEMuxSel.H_BCAST)
+      dut.io.control.sel_b.poke(PEMuxSel.V_BCAST)
+      dut.io.control.sel_c.poke(PEMuxSel.REG)
+      dut.io.control.sel_q.poke(PEMuxSel.V)
 
       dut.io.control.fu_control.shift.poke(0.U)
       dut.io.control.fu_control.big_alu_sel.poke(BigALUSel.MUL)
@@ -226,29 +262,45 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
       dut.io.control.fu_control.minus_a.poke(false)
       dut.io.control.fu_control.minus_m.poke(false)
 
-      dut.clock.step(1)
-
-      dut.io.control.sel_a.poke(PEMuxSel.H_BCAST)
-      dut.io.control.sel_b.poke(PEMuxSel.V_BCAST)
-      dut.io.control.sel_c.poke(PEMuxSel.REG)
+      dut.io.control.use_double_buffer.poke(false)
+      dut.io.control.double_buffer_sel.poke(0.U)
+      dut.io.valid.poke(true)
 
       dut.clock.step(1)
 
+      dut.io.in_v_bcast.poke(B)
+      dut.io.in_h_bcast.poke(A)
+      dut.io.in_v.poke(ACC_REG_alt)
+
+      dut.io.control.double_buffer_sel.poke(1.U)
+
+      dut.clock.step(1)
       dut.io.out.expect(A * B + ACC_REG)
+
+      dut.io.in_v_bcast.poke(B_alt)
+      dut.io.in_h_bcast.poke(A_alt)
+      dut.io.in_v.poke(0.S)
+
+      dut.io.control.double_buffer_sel.poke(0.U)
+
+      dut.clock.step(1)
+
+      dut.io.out.expect(A_alt * B_alt + ACC_REG_alt)
     }
   }
 
   it should "MMADD2" in {
     test(new ModPE(CommonInterconnectConfigs.DefaultICConfig)) { dut =>
-      dut.io.in_v_bcast.poke(B)
-      dut.io.in_h_bcast.poke(A)
+      dut.io.in_v_bcast.poke(0.S)
+      dut.io.in_h_bcast.poke(0.S)
       dut.io.in_v.poke(ACC_REG)
       dut.io.in_h.poke(0.S)
       dut.io.in_d.poke(C)
 
-      dut.io.control.sel_a.poke(PEMuxSel.ZERO)
-      dut.io.control.sel_b.poke(PEMuxSel.ZERO)
-      dut.io.control.sel_c.poke(PEMuxSel.V)
+      dut.io.control.sel_a.poke(PEMuxSel.H_BCAST)
+      dut.io.control.sel_b.poke(PEMuxSel.V_BCAST)
+      dut.io.control.sel_c.poke(PEMuxSel.REG)
+      dut.io.control.sel_q.poke(PEMuxSel.V)
 
       dut.io.control.fu_control.shift.poke(0.U)
       dut.io.control.fu_control.big_alu_sel.poke(BigALUSel.MUL)
@@ -257,15 +309,30 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
       dut.io.control.fu_control.minus_a.poke(false)
       dut.io.control.fu_control.minus_m.poke(true)
 
-      dut.clock.step(1)
-
-      dut.io.control.sel_a.poke(PEMuxSel.H_BCAST)
-      dut.io.control.sel_b.poke(PEMuxSel.V_BCAST)
-      dut.io.control.sel_c.poke(PEMuxSel.REG)
+      dut.io.control.use_double_buffer.poke(false)
+      dut.io.control.double_buffer_sel.poke(0.U)
+      dut.io.valid.poke(true)
 
       dut.clock.step(1)
 
+      dut.io.in_v_bcast.poke(B)
+      dut.io.in_h_bcast.poke(A)
+      dut.io.in_v.poke(ACC_REG_alt)
+
+      dut.io.control.double_buffer_sel.poke(1.U)
+
+      dut.clock.step(1)
       dut.io.out.expect(-(A * B) + ACC_REG)
+
+      dut.io.in_v_bcast.poke(B_alt)
+      dut.io.in_h_bcast.poke(A_alt)
+      dut.io.in_v.poke(0.S)
+
+      dut.io.control.double_buffer_sel.poke(0.U)
+
+      dut.clock.step(1)
+
+      dut.io.out.expect(-(A_alt * B_alt) + ACC_REG_alt)
     }
   }
 
@@ -287,6 +354,10 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
       dut.io.control.fu_control.sel_m.poke(MMuxSel.A)
       dut.io.control.fu_control.minus_a.poke(false)
       dut.io.control.fu_control.minus_m.poke(false)
+
+      dut.io.control.use_double_buffer.poke(false)
+      dut.io.control.double_buffer_sel.poke(0.U)
+      dut.io.valid.poke(true)
 
       dut.clock.step(1)
       dut.io.out.expect(if (A > B) A else C)
@@ -312,6 +383,10 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
       dut.io.control.fu_control.minus_a.poke(false)
       dut.io.control.fu_control.minus_m.poke(false)
 
+      dut.io.control.use_double_buffer.poke(false)
+      dut.io.control.double_buffer_sel.poke(0.U)
+      dut.io.valid.poke(true)
+
       dut.clock.step(1)
       dut.io.out.expect(if (A < B) A else C)
     }
@@ -336,6 +411,10 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
       dut.io.control.fu_control.minus_a.poke(false)
       dut.io.control.fu_control.minus_m.poke(false)
 
+      dut.io.control.use_double_buffer.poke(false)
+      dut.io.control.double_buffer_sel.poke(0.U)
+      dut.io.valid.poke(true)
+
       dut.clock.step(1)
       dut.io.out.expect(if (A == B) A else C)
     }
@@ -359,6 +438,10 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
       dut.io.control.fu_control.sel_m.poke(MMuxSel.A)
       dut.io.control.fu_control.minus_a.poke(false)
       dut.io.control.fu_control.minus_m.poke(false)
+
+      dut.io.control.use_double_buffer.poke(false)
+      dut.io.control.double_buffer_sel.poke(0.U)
+      dut.io.valid.poke(true)
 
       dut.clock.step(1)
       dut.io.out.expect(if (A != B) A else C)
