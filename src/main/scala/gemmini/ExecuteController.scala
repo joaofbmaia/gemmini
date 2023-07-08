@@ -47,12 +47,13 @@ class ExecuteController[T <: Data, U <: Data, V <: Data](xLen: Int, tagWidth: In
     val counter = new CounterEventIO()
   })
 
+  /*
   val block_size = meshRows*tileRows
 
   val mesh_tag = new Bundle with TagQueueTag {
     val rob_id = UDValid(UInt(log2Up(reservation_station_entries).W))
     val addr = local_addr_t.cloneType
-    val rows = UInt(log2Up(block_size + 1).W)
+    val rows = UInt(32.W) //infinite dataflow
     val cols = UInt(log2Up(block_size + 1).W)
 
     override def make_this_garbage(dummy: Int = 0): Unit = {
@@ -197,7 +198,7 @@ class ExecuteController[T <: Data, U <: Data, V <: Data](xLen: Int, tagWidth: In
   mesh.io.req.bits.tag := DontCare
   mesh.io.req.bits.tag.cols := cntl.c_cols
   mesh.io.req.bits.tag.rows := cntl.c_rows
-  mesh.io.req.bits.total_rows := block_size.U
+  mesh.io.req.bits.total_rows := cntl.total_rows
   mesh.io.req.bits.pe_control.propagate := Mux(control_state === flush, in_prop_flush, cntl.prop)
   mesh.io.req.bits.pe_control.dataflow := cntl.dataflow
   mesh.io.req.bits.pe_control.shift := cntl.shift
@@ -233,16 +234,16 @@ class ExecuteController[T <: Data, U <: Data, V <: Data](xLen: Int, tagWidth: In
 
   // SRAM scratchpad
   // Fire counters which resolve same-bank accesses
-  val a_fire_counter = Reg(UInt(log2Up(block_size).W))
-  val b_fire_counter = Reg(UInt(log2Up(block_size).W))
-  val d_fire_counter = Reg(UInt(log2Up(block_size).W))
+  val a_fire_counter = Reg(UInt(32.W))
+  val b_fire_counter = Reg(UInt(32.W))
+  val d_fire_counter = Reg(UInt(32.W))
 
   val a_fire_started = RegInit(false.B)
   val d_fire_started = RegInit(false.B)
   val b_fire_started = RegInit(false.B)
 
   // "A" stride variables
-  val a_addr_offset = Reg(UInt((16 + log2Up(block_size)).W))
+  val a_addr_offset = Reg(UInt((16 + 32).W))
   val a_addr_stride = Reg(UInt(16.W)) // TODO magic numbers
 
   // "C" stride variables
@@ -282,7 +283,8 @@ class ExecuteController[T <: Data, U <: Data, V <: Data](xLen: Int, tagWidth: In
   val performing_single_mul = WireInit(perform_single_mul && control_state === compute)
   val performing_mul_pre = WireInit(perform_mul_pre && control_state === compute)
 
-  val total_rows = WireInit(block_size.U) // The total number of rows of A, B, and D to feed into the mesh
+  //val total_rows = WireInit(block_size.U) // The total number of rows of A, B, and D to feed into the mesh
+  val total_rows = WireInit(UInt(32.W), block_size.U)
 
   // TODO Also reduce the number of rows when "perform_single_preload === true.B"
   when (current_dataflow === Dataflow.WS.id.U && d_garbage &&
@@ -300,6 +302,8 @@ class ExecuteController[T <: Data, U <: Data, V <: Data](xLen: Int, tagWidth: In
      */
     total_rows := maxOf(maxOf(rows_a, rows_b), 4.U)
   }
+
+  total_rows := b_rows
 
   //added for mul_pre sync
   val mul_pre_counter_sub = RegInit(0.U(3.W))
@@ -728,13 +732,13 @@ class ExecuteController[T <: Data, U <: Data, V <: Data](xLen: Int, tagWidth: In
     val d_unpadded_cols = UInt(log2Up(block_size + 1).W)
 
     val c_addr = local_addr_t.cloneType
-    val c_rows = UInt(log2Up(block_size + 1).W)
+    val c_rows = UInt(32.W)
     val c_cols = UInt(log2Up(block_size + 1).W)
 
     val a_transpose = Bool()
     val bd_transpose = Bool()
 
-    val total_rows = UInt(log2Up(block_size + 1).W)
+    val total_rows = UInt(32.W)
 
     val rob_id = UDValid(UInt(log2Up(reservation_station_entries).W))
 
@@ -900,7 +904,7 @@ class ExecuteController[T <: Data, U <: Data, V <: Data](xLen: Int, tagWidth: In
 
   // Scratchpad writes
   // val output_counter = new Counter(block_size)
-  val output_counter = RegInit(0.U(log2Up(block_size).W))
+  val output_counter = RegInit(0.U(32.W))
 
   val w_total_output_rows = mesh.io.resp.bits.total_rows
 
@@ -1034,4 +1038,5 @@ class ExecuteController[T <: Data, U <: Data, V <: Data](xLen: Int, tagWidth: In
     PerfCounter(ex_preload_haz_cycle, "ex_preload_haz_cycle", "cycles during which the execute controller is stalling preloads due to hazards")
     PerfCounter(ex_mulpre_haz_cycle, "ex_mulpre_haz_cycle", "cycles during which the execute controller is stalling matmuls due to hazards")
   }
+  */
 }

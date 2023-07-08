@@ -16,7 +16,7 @@ object MMuxSel extends ChiselEnum {
   val A, BIG_ALU = Value
 }
 
-class FUControl[T <: Data : Arithmetic](interconnectConfig : InterconnectConfig[T]) extends Bundle {
+class FUControl[T <: Data/* : Arithmetic*/](interconnectConfig : InterconnectConfig[T]) extends Bundle {
     val big_alu_sel = BigALUSel()
     val small_alu_sel = SmallALUSel()
     val minus_a = Bool()

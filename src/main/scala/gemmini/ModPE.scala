@@ -5,7 +5,7 @@ import chisel3._
 import chisel3.util._
 import chisel3.experimental.ChiselEnum
 
-class ModPEControl[T <: Data : Arithmetic](interconnectConfig : InterconnectConfig[T]) extends Bundle {
+class ModPEControl[T <: Data/* : Arithmetic*/](interconnectConfig : InterconnectConfig[T]) extends Bundle {
   val sel_a = PEMuxSel()
   val sel_b = PEMuxSel()
   val sel_c = PEMuxSel()
@@ -27,6 +27,10 @@ object PEMuxSel extends ChiselEnum {
   val IDENTITY = Value("b111".U)
 }
 
+// object OutMuxSel extends ChiselEnum {
+  
+// }
+
 class ModPE[T <: Data](interconnectConfig : InterconnectConfig[T])
                    (implicit ev: Arithmetic[T]) extends Module { // Debugging variables
   import ev._
@@ -41,25 +45,8 @@ class ModPE[T <: Data](interconnectConfig : InterconnectConfig[T])
     val in_d = Input(interconnectConfig.interPEType)
     val out = Output(interconnectConfig.interPEType)
 
-    // just for testing (CU not implemented yet)
     val control = Input(new ModPEControl(interconnectConfig))
     val valid = Input(Bool())
-
-    // daqui para baixo é SUS
-
-    // val in_control = Input(new PEControl(interconnectConfig.interPEType))
-    // val out_control = Output(new PEControl(interconnectConfig.interPEType))
-
-    // val in_id = Input(UInt(log2Up(max_simultaneous_matmuls).W))
-    // val out_id = Output(UInt(log2Up(max_simultaneous_matmuls).W))
-
-    // val in_last = Input(Bool())
-    // val out_last = Output(Bool())
-
-    // val in_valid = Input(Bool())
-    // val out_valid = Output(Bool())
-
-    // val bad_dataflow = Output(Bool())
   })
 
   val sel_a = Wire(PEMuxSel())
@@ -100,9 +87,9 @@ class ModPE[T <: Data](interconnectConfig : InterconnectConfig[T])
   a := interconnectConfig.interPEType.identity
 
   switch (sel_a) {
-    // is (PEMuxSel.V_BCAST) {
-    //   a := io.in_v_bcast
-    // }
+    is (PEMuxSel.V_BCAST) {
+      a := io.in_v_bcast
+    }
     // is (PEMuxSel.V) {
     //   a := io.in_v
     // }
