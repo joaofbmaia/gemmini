@@ -4,11 +4,10 @@ import chisel3._
 import chisel3.util._
 import chipsalliance.rocketchip.config
 
-class PEReconfigurationControl[T <: Data](interconnectConfig: InterconnectConfig[T], controlPatternTableSize: Int) extends Bundle {
+class TableReconfigurationControl(lines_number: Int, word_sel_width: Int) extends Bundle {
   val write_enable = Bool()
-  val line_index = UInt(log2Ceil(controlPatternTableSize).W)
-  // each line is divided two words: HIGH WORD when 0 and LOW WORD when 1
-  val word_sel = UInt(1.W)
+  val line_index = UInt(log2Ceil(lines_number).W)
+  val word_sel = UInt(word_sel_width.W)
 }
 
 /**
@@ -18,6 +17,10 @@ class PEReconfigurationControl[T <: Data](interconnectConfig: InterconnectConfig
 class PE[T <: Data](interconnectConfig : InterconnectConfig[T], controlPatternTableSize: Int)
                    (implicit ev: Arithmetic[T]) extends Module { // Debugging variables
   import ev._
+
+  val cpg_word_width = interconnectConfig.verticalBroadcastType.getWidth
+  val cpg_line_width = (new ControlPatternTableLine(interconnectConfig, controlPatternTableSize)).getWidth
+  val cpg_line_coalescer = Module(new LineCoalescer(cpg_word_width, cpg_line_width))
 
   val io = IO(new Bundle {
     val in_v_bcast = Input(interconnectConfig.verticalBroadcastType)
@@ -38,7 +41,7 @@ class PE[T <: Data](interconnectConfig : InterconnectConfig[T], controlPatternTa
     val new_control_pattern = Input(Bool())
 
     // reconfiguration
-    val rcgf = Input(new PEReconfigurationControl(interconnectConfig, controlPatternTableSize))
+    val rcfg = Input(new TableReconfigurationControl(controlPatternTableSize, cpg_line_coalescer.word_sel_width))
 
   })
   val mod_pe = Module(new ModPE(interconnectConfig))
@@ -67,29 +70,11 @@ class PE[T <: Data](interconnectConfig : InterconnectConfig[T], controlPatternTa
 
 
   // reconfiguration
-  cpg.io.write_index := io.rcgf.line_index
+  cpg.io.write_index := io.rcfg.line_index
+  cpg.io.write_enable := cpg_line_coalescer.io.out.valid
+  cpg.io.write_data := cpg_line_coalescer.io.out.bits.asTypeOf(new ControlPatternTableLine(interconnectConfig, controlPatternTableSize))
 
-  val word_width = interconnectConfig.verticalBroadcastType.getWidth
-  val line_width = (new ControlPatternTableLine(interconnectConfig, controlPatternTableSize)).getWidth
-
-  assert(line_width > word_width && line_width <= 2 * word_width, "vertical broadcast line width not suitable for reconfiguration word")
-
-  val high_part_width = line_width - word_width
-  val high_part_buffer = Reg(UInt(high_part_width.W))
-
-  val word = Wire(UInt(word_width.W))
-  word := io.in_v_bcast.asUInt
-
-  when(io.rcgf.write_enable && io.rcgf.word_sel === 0.U) {
-    high_part_buffer := word // the word gets truncated
-  }
-
-  cpg.io.write_enable := io.rcgf.write_enable && io.rcgf.word_sel === 1.U
-
-  val full_line = Wire(UInt(line_width.W))
-  full_line := Cat(high_part_buffer, word)
-  //full_line(word_width - 1, 0) := word //low part
-  //full_line(line_width - 1, word_width) := high_part_buffer //high part
-
-  cpg.io.write_data := full_line.asTypeOf(new ControlPatternTableLine(interconnectConfig, controlPatternTableSize))
+  cpg_line_coalescer.io.in.valid := io.rcfg.write_enable
+  cpg_line_coalescer.io.in.bits := io.in_v_bcast.asUInt
+  cpg_line_coalescer.io.word_select :=  io.rcfg.word_sel
 }

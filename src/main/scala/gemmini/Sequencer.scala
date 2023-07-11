@@ -4,8 +4,10 @@ import chisel3._
 import chisel3.util._
 
 class Sequencer[T <: Data](interconnectConfig : InterconnectConfig[T], sequenceTableSize: Int, controlPatternTableSize: Int, meshRows: Int, meshColumns: Int) extends Module { 
+  val sequencing_elements: Seq[Seq[SequencingElement]] = Seq.fill(meshRows, meshColumns)(Module(new SequencingElement(sequenceTableSize, controlPatternTableSize, interconnectConfig.verticalBroadcastType.getWidth)))
+  val se_line_coalescer_word_sel_width = sequencing_elements(0)(0).se_line_coalescer.word_sel_width
+
   val io = IO(new Bundle {
-    //val pe_control = Output(new ModPEControl(interconnectConfig))
     val cycle_fire = Input(Bool())
     val sequencer_reset = Input(Bool())
     
@@ -16,11 +18,9 @@ class Sequencer[T <: Data](interconnectConfig : InterconnectConfig[T], sequenceT
     val new_control_pattern = Output(Vec(meshRows, Vec(meshColumns, Bool())))
 
     // reconfiguration
-    val write_enable = Input(Bool())
-    val write_row = Input(UInt(log2Ceil(meshRows).W))
-    val write_column = Input(UInt(log2Ceil(meshColumns).W))
-    val write_index_element = Input(UInt(log2Ceil(sequenceTableSize).W))
-    val write_data = Input(new SequenceTableLine(controlPatternTableSize))
+    val rcfg = Input(new TableReconfigurationControl(sequenceTableSize, se_line_coalescer_word_sel_width))
+    val row_select = Input(UInt(log2Ceil(meshRows).W))
+    val write_data = Input(Vec(meshColumns, UInt(interconnectConfig.verticalBroadcastType.getWidth.W)))
   })
 
 
@@ -33,7 +33,6 @@ class Sequencer[T <: Data](interconnectConfig : InterconnectConfig[T], sequenceT
   }
 
   // Sequencinig elements
-  val sequencing_elements: Seq[Seq[SequencingElement]] = Seq.fill(meshRows, meshColumns)(Module(new SequencingElement(sequenceTableSize, controlPatternTableSize)))
   for (r <- 0 until meshRows) {
     for (c <- 0 until meshColumns) {
       sequencing_elements(r)(c).io.fire_counter := fire_counter
@@ -46,9 +45,10 @@ class Sequencer[T <: Data](interconnectConfig : InterconnectConfig[T], sequenceT
   // Reconfiguration
   for (r <- 0 until meshRows) {
     for (c <- 0 until meshColumns) {
-      sequencing_elements(r)(c).io.write_enable := Mux(io.write_row === r.U && io.write_column === c.U, io.write_enable, false.B)
-      sequencing_elements(r)(c).io.write_index := io.write_index_element
-      sequencing_elements(r)(c).io.write_data := io.write_data
+      sequencing_elements(r)(c).io.rcfg.write_enable := Mux(io.row_select === r.U, io.rcfg.write_enable, false.B)
+      sequencing_elements(r)(c).io.rcfg.line_index := io.rcfg.line_index
+      sequencing_elements(r)(c).io.rcfg.word_sel := io.rcfg.word_sel
+      sequencing_elements(r)(c).io.write_data := io.write_data(c)
     }
   }
 }

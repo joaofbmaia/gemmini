@@ -35,12 +35,12 @@ class Mesh[T <: Data: Arithmetic]
     val new_control_pattern = Input(Vec(meshRows, Vec(meshColumns, Bool())))
 
     // reconfiguration
-    val rcgf = Input(new PEReconfigurationControl(interconnectConfig, controlPatternTableSize))
-    val rcgf_active = Input(Bool())
+    val rcfg = Input(new TableReconfigurationControl(controlPatternTableSize, 1))
+    val rcfg_active = Input(Bool())
   })
 
   val valid_cycle = Wire(Bool())
-  valid_cycle := io.valid && !io.rcgf_active
+  valid_cycle := io.valid && !io.rcfg_active
 
   // mesh(r)(c) => Tile at row r, column c
   val mesh: Seq[Seq[PE[T]]] = Seq.fill(meshRows, meshColumns)(Module(new PE(interconnectConfig, controlPatternTableSize)))
@@ -72,7 +72,7 @@ class Mesh[T <: Data: Arithmetic]
   for (r <- 0 until meshRows) {
     for (c <- 0 until meshColumns) {
       // data lines
-      if (r > 0) mesh(r)(c).io.in_v_bcast := Mux(io.rcgf_active, pipe(io.rcgf_active, mesh(r - 1)(c).io.out_v_bcast, 1), pipe(valid_cycle, mesh(r - 1)(c).io.out_v_bcast, 1)) // V_BCAST and configuration
+      if (r > 0) mesh(r)(c).io.in_v_bcast := Mux(io.rcfg_active, pipe(io.rcfg_active, mesh(r - 1)(c).io.out_v_bcast, 1), pipe(valid_cycle, mesh(r - 1)(c).io.out_v_bcast, 1)) // V_BCAST and configuration
       if (r > 0) mesh(r)(c).io.in_v := pipe(valid_cycle, mesh(r - 1)(c).io.out, 1) // V
       if (c > 0) mesh(r)(c).io.in_h_bcast := pipe(valid_cycle, mesh(r)(c - 1).io.out_h_bcast, 1) // H_BCAST
       if (c > 0) mesh(r)(c).io.in_h := pipe(valid_cycle, mesh(r)(c - 1).io.out, 1) // H
@@ -81,7 +81,7 @@ class Mesh[T <: Data: Arithmetic]
       mesh(r)(c).io.next_control_pattern_index := io.next_control_pattern_indexes(r)(c)
       mesh(r)(c).io.new_control_pattern := io.new_control_pattern(r)(c)
       mesh(r)(c).io.in_valid := valid_cycle
-      mesh(r)(c).io.rcgf := io.rcgf
+      mesh(r)(c).io.rcfg := io.rcfg
     }
   }
 }
