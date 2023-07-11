@@ -38,25 +38,21 @@ class MeshTest extends AnyFlatSpec with ChiselScalatestTester {
         val out_v_bcast = Output(Vec(meshColumns, interconnectConfig.verticalBroadcastType)) //do i need this?
         val out = Output(Vec(meshColumns, interconnectConfig.interPEType))
 
-        // sequencer reconfiguration
-        val sequencer_rcfg = Input(new TableReconfigurationControl(sequenceTableSize, 1))
-        val sequencer_write_data = Input(Vec(meshColumns, UInt(interconnectConfig.verticalBroadcastType.getWidth.W)))
-        val sequencer_row_select = Input(UInt(log2Ceil(meshRows).W))
-
-        // mesh reconfiguration
-        val mesh_rcfg = Input(new TableReconfigurationControl(controlPatternTableSize, 1))
-        val mesh_rcfg_active = Input(Bool())
+        // reconfiguration
+        val rcfg_start = Input(Bool())
+        val rcfg_done = Output(Bool())
       })
 
       val sequencer = Module(new Sequencer(interconnectConfig, sequenceTableSize, controlPatternTableSize, meshRows, meshColumns))
       val mesh = Module(new Mesh(interconnectConfig, controlPatternTableSize, meshRows, meshColumns))
+      val rcfg_controller = Module(new MeshReconfigurationController(meshRows, meshColumns, sequenceTableSize, controlPatternTableSize))
 
       // sequencer external IO
-      sequencer.io.cycle_fire := io.cycle_fire
+      sequencer.io.cycle_fire := io.cycle_fire && rcfg_controller.io.done
       sequencer.io.sequencer_reset := io.sequencer_reset
 
       // mesh external IO
-      mesh.io.valid := io.cycle_fire
+      mesh.io.valid := io.cycle_fire && rcfg_controller.io.done
 
       mesh.io.in_h_bcast := io.in_h_bcast
       mesh.io.in_v_bcast := io.in_v_bcast
@@ -71,59 +67,51 @@ class MeshTest extends AnyFlatSpec with ChiselScalatestTester {
       mesh.io.new_control_pattern := sequencer.io.new_control_pattern
 
       // sequencer rcfg
-      sequencer.io.rcfg := io.sequencer_rcfg
-      sequencer.io.row_select := io.sequencer_row_select
-      sequencer.io.write_data := io.sequencer_write_data
+      sequencer.io.rcfg := rcfg_controller.io.sequencer_rcfg
+      sequencer.io.row_select := rcfg_controller.io.sequencer_row_select
+      for (c <- 0 until meshColumns) {
+        sequencer.io.write_data(c) := io.in_v_bcast(c).asUInt
+      }
 
       // mesh rcfg
-      mesh.io.rcfg := io.mesh_rcfg
-      mesh.io.rcfg_active := io.mesh_rcfg_active
+      mesh.io.rcfg := rcfg_controller.io.mesh_rcfg
+      mesh.io.rcfg_active := rcfg_controller.io.mesh_rcfg_active
+
+      rcfg_controller.io.start := io.rcfg_start
+      io.rcfg_done := rcfg_controller.io.done
     
     }
     
     (new ChiselStage).emitVerilog(new MeshWrapper(meshRows, meshColumns, interconnectConfig, sequenceTableSize, controlPatternTableSize))
     test(new MeshWrapper(meshRows, meshColumns, interconnectConfig, sequenceTableSize, controlPatternTableSize)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
-        dut.io.cycle_fire.poke(false)
-        dut.io.sequencer_reset.poke(true.B)
-        dut.clock.step(1)
-        dut.io.sequencer_reset.poke(false.B)
         // lets write to the sequencer memory
-        dut.io.sequencer_rcfg.write_enable.poke(true)
-
+        dut.io.rcfg_start.poke(true)
+        dut.clock.step(1)
+        dut.io.rcfg_start.poke(false)
         for (r <- 0 until meshRows) {
-          dut.io.sequencer_row_select.poke(r)
           for (l <- 0 until sequenceTableSize) {
-          dut.io.sequencer_rcfg.line_index.poke(l)
             for (w <- 0 until 2) {
-              dut.io.sequencer_rcfg.word_sel.poke(w)
               for (c <- 0 until meshColumns) {
-                dut.io.sequencer_write_data(c).poke(BigInt(seq_config.next().toArray))
+                dut.io.in_v_bcast(c).poke(BigInt(seq_config.next().toArray))
               }
               dut.clock.step(1)
             }
           }
         }
         // sequencer is programmed
-        dut.io.sequencer_rcfg.write_enable.poke(false)
 
         // lets write to the cgp memory
-        dut.io.mesh_rcfg.write_enable.poke(false)
-        dut.io.mesh_rcfg_active.poke(true)
         for (l <- 0 until controlPatternTableSize) {
-          dut.io.mesh_rcfg.line_index.poke(l)
           for (w <- 0 until 2) {
-            dut.io.mesh_rcfg.word_sel.poke(w)
             for (r <- 0 until meshRows) {
               for (c <- 0 until meshColumns) {
                 dut.io.in_v_bcast(c).poke(BigInt(mesh_config.next().toArray))
               }
-              if (r == meshRows - 1) dut.io.mesh_rcfg.write_enable.poke(true)
               dut.clock.step(1)
-              if (r == meshRows - 1) dut.io.mesh_rcfg.write_enable.poke(false)
             }
           }
         }
-        dut.io.mesh_rcfg_active.poke(false)
+        dut.io.rcfg_done.expect(true)
         // cgp is programmed
         
         // lets reset
