@@ -10,6 +10,7 @@ import chiseltest.simulator.WriteVcdAnnotation
 import chisel3.stage.ChiselStage
 
 import scala.io.Source
+import chipsalliance.rocketchip.config
 
 class MeshTest extends AnyFlatSpec with ChiselScalatestTester {
   "Mesh" should "perform OS matrix multiplication correctly" in {
@@ -19,40 +20,25 @@ class MeshTest extends AnyFlatSpec with ChiselScalatestTester {
     val meshRows = 2
     val meshColumns = 2
 
-    val seq_config = Source.fromFile("/home/asuka/thesis/chipyard/generators/gemmini/OS_GEMM_bit_seq_load.bin").map(_.toByte).grouped(4)
-    val mesh_config = Source.fromFile("/home/asuka/thesis/chipyard/generators/gemmini/OS_GEMM_bit_cpg_load.bin").map(_.toByte).grouped(4)
+    val bitstream = Source.fromFile("/home/asuka/thesis/chipyard/generators/gemmini/OS_GEMM_bit_mesh.bin").map(_.toByte).grouped(4)
     
     (new ChiselStage).emitVerilog(new MeshWrapper(meshRows, meshColumns, interconnectConfig, sequenceTableSize, controlPatternTableSize))
     test(new MeshWrapper(meshRows, meshColumns, interconnectConfig, sequenceTableSize, controlPatternTableSize)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
-        // lets write to the sequencer memory
+        // lets write the configuration
         dut.io.rcfg_start.poke(true)
         dut.clock.step(1)
         dut.io.rcfg_start.poke(false)
-        for (r <- 0 until meshRows) {
-          for (l <- 0 until sequenceTableSize) {
-            for (w <- 0 until 2) {
-              for (c <- 0 until meshColumns) {
-                dut.io.in_v_bcast(c).poke(BigInt(seq_config.next().toArray))
-              }
-              dut.clock.step(1)
-            }
-          }
-        }
-        // sequencer is programmed
 
-        // lets write to the cgp memory
-        for (l <- 0 until controlPatternTableSize) {
-          for (w <- 0 until 2) {
-            for (r <- 0 until meshRows) {
-              for (c <- 0 until meshColumns) {
-                dut.io.in_v_bcast(c).poke(BigInt(mesh_config.next().toArray))
-              }
-              dut.clock.step(1)
-            }
+        val se_word_number = 2
+        val cpg_word_number = 2
+        val config_cycles = (meshRows * sequenceTableSize * se_word_number) + (controlPatternTableSize * cpg_word_number * meshRows)
+
+        for (i <- 0 until config_cycles) {
+          for (c <- 0 until meshColumns) {
+            dut.io.in_v_bcast(c).poke(BigInt(bitstream.next().toArray))
           }
+          dut.clock.step(1)
         }
-        dut.io.rcfg_done.expect(true)
-        // cgp is programmed
         
         // lets reset
         dut.io.cycle_fire.poke(true)
