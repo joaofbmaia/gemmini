@@ -18,15 +18,15 @@ class PE[T <: Data](interconnectConfig : InterconnectConfig[T], controlPatternTa
                    (implicit ev: Arithmetic[T]) extends Module { // Debugging variables
   import ev._
 
-  val cpg_word_width = interconnectConfig.verticalBroadcastType.getWidth
+  val cpg_word_width = interconnectConfig.verticalGridType.getWidth
   val cpg_line_width = (new ControlPatternTableLine(interconnectConfig, controlPatternTableSize)).getWidth
   val cpg_line_coalescer = Module(new LineCoalescer(cpg_word_width, cpg_line_width))
 
   val io = IO(new Bundle {
-    val in_v_bcast = Input(interconnectConfig.verticalBroadcastType)
-    val in_h_bcast = Input(interconnectConfig.horizontalBroadcastType)
-    val out_v_bcast = Output(interconnectConfig.verticalBroadcastType)
-    val out_h_bcast = Output(interconnectConfig.horizontalBroadcastType)
+    val in_v_grid = Input(interconnectConfig.verticalGridType)
+    val in_h_grid = Input(interconnectConfig.horizontalGridType)
+    val out_v_grid = Output(interconnectConfig.verticalGridType)
+    val out_h_grid = Output(interconnectConfig.horizontalGridType)
     val in_v = Input(interconnectConfig.interPEType)
     val in_h = Input(interconnectConfig.interPEType)
     val in_d = Input(interconnectConfig.interPEType)
@@ -50,10 +50,10 @@ class PE[T <: Data](interconnectConfig : InterconnectConfig[T], controlPatternTa
   val valid = io.in_valid
   
   // ModPE
-  mod_pe.io.in_v_bcast := io.in_v_bcast
-  mod_pe.io.in_h_bcast := io.in_h_bcast
-  io.out_v_bcast := mod_pe.io.out_v_bcast
-  io.out_h_bcast := mod_pe.io.out_h_bcast
+  mod_pe.io.in_v_grid := io.in_v_grid
+  mod_pe.io.in_h_grid := io.in_h_grid
+  io.out_v_grid := mod_pe.io.out_v_grid
+  io.out_h_grid := mod_pe.io.out_h_grid
   mod_pe.io.in_v := io.in_v
   mod_pe.io.in_h := io.in_h
   mod_pe.io.in_d := io.in_d
@@ -75,6 +75,6 @@ class PE[T <: Data](interconnectConfig : InterconnectConfig[T], controlPatternTa
   cpg.io.write_data := cpg_line_coalescer.io.out.bits.asTypeOf(new ControlPatternTableLine(interconnectConfig, controlPatternTableSize))
 
   cpg_line_coalescer.io.in.valid := io.rcfg.write_enable
-  cpg_line_coalescer.io.in.bits := io.in_v_bcast.asUInt
+  cpg_line_coalescer.io.in.bits := io.in_v_grid.asUInt
   cpg_line_coalescer.io.word_select :=  io.rcfg.word_sel
 }

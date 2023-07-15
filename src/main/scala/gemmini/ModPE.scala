@@ -11,15 +11,16 @@ class ModPEControl[T <: Data/* : Arithmetic*/](interconnectConfig : Interconnect
   val sel_c = PEMuxSel()
   val sel_q = PEMuxSel()
   val fu_control = new FUControl(interconnectConfig)
-  // this must change name vvv
-  val use_double_buffer = Bool()
+  val sel_out_v_grid = OutGridMuxSel()
+  val sel_out_h_grid = OutGridMuxSel()
+  val sel_out = OutMuxSel()
   val double_buffer_sel = UInt(1.W)
 }
 
 object PEMuxSel extends ChiselEnum {
-  val V_BCAST  = Value("b000".U)
+  val V_GRID   = Value("b000".U)
   val V        = Value("b001".U)
-  val H_BCAST  = Value("b010".U)
+  val H_GRID   = Value("b010".U)
   val H        = Value("b011".U)
   val D        = Value("b100".U)
   val REG      = Value("b101".U)
@@ -27,19 +28,23 @@ object PEMuxSel extends ChiselEnum {
   val IDENTITY = Value("b111".U)
 }
 
-// object OutMuxSel extends ChiselEnum {
-  
-// }
+object OutGridMuxSel extends ChiselEnum {
+  val FORWARD, FU = Value
+}
+
+object OutMuxSel extends ChiselEnum {
+  val FU, REG = Value
+}
 
 class ModPE[T <: Data](interconnectConfig : InterconnectConfig[T])
                    (implicit ev: Arithmetic[T]) extends Module { // Debugging variables
   import ev._
 
   val io = IO(new Bundle {
-    val in_v_bcast = Input(interconnectConfig.verticalBroadcastType)
-    val in_h_bcast = Input(interconnectConfig.horizontalBroadcastType)
-    val out_v_bcast = Output(interconnectConfig.verticalBroadcastType)
-    val out_h_bcast = Output(interconnectConfig.horizontalBroadcastType)
+    val in_v_grid = Input(interconnectConfig.verticalGridType)
+    val in_h_grid = Input(interconnectConfig.horizontalGridType)
+    val out_v_grid = Output(interconnectConfig.verticalGridType)
+    val out_h_grid = Output(interconnectConfig.horizontalGridType)
     val in_v = Input(interconnectConfig.interPEType)
     val in_h = Input(interconnectConfig.interPEType)
     val in_d = Input(interconnectConfig.interPEType)
@@ -63,9 +68,20 @@ class ModPE[T <: Data](interconnectConfig : InterconnectConfig[T])
 
   val double_buffer = Module(new DoubleBuffer(interconnectConfig))
 
-  io.out := Mux(io.control.use_double_buffer, double_buffer.io.s, double_buffer.io.r)
-  io.out_v_bcast := io.in_v_bcast
-  io.out_h_bcast := io.in_h_bcast
+  val PEMuxDict = Map(
+    PEMuxSel.V_GRID -> io.in_v_grid,
+    PEMuxSel.V -> io.in_v,
+    PEMuxSel.H_GRID -> io.in_h_grid,
+    PEMuxSel.H -> io.in_h,
+    PEMuxSel.D -> io.in_d,
+    PEMuxSel.REG -> double_buffer.io.r,
+    PEMuxSel.ZERO -> interconnectConfig.interPEType.zero,
+    PEMuxSel.IDENTITY -> interconnectConfig.interPEType.identity
+  )
+
+  io.out := Mux(io.control.sel_out === OutMuxSel.REG, double_buffer.io.s, fu.io.p)
+  io.out_v_grid := Mux(io.control.sel_out_v_grid === OutGridMuxSel.FU, fu.io.p, io.in_v_grid)
+  io.out_h_grid := Mux(io.control.sel_out_h_grid === OutGridMuxSel.FU, fu.io.p, io.in_h_grid)
 
   sel_a := io.control.sel_a
   sel_b := io.control.sel_b
@@ -82,134 +98,20 @@ class ModPE[T <: Data](interconnectConfig : InterconnectConfig[T])
   double_buffer.io.sel := io.control.double_buffer_sel
   double_buffer.io.reg_enable := io.valid
 
-  // Begin Multiplexer A
-  // default for mux_a
-  a := interconnectConfig.interPEType.identity
+  // Multiplexer A
+  val mux_a_mapping = interconnectConfig.allowed_sel_a.map(x => x.asUInt -> PEMuxDict(x))
+  a := MuxLookup(sel_a.asUInt, mux_a_mapping.last._2, mux_a_mapping)
 
-  switch (sel_a) {
-    is (PEMuxSel.V_BCAST) {
-      a := io.in_v_bcast
-    }
-    // is (PEMuxSel.V) {
-    //   a := io.in_v
-    // }
-    is (PEMuxSel.H_BCAST) {
-      a := io.in_h_bcast
-    }
-    is (PEMuxSel.H) {
-      a := io.in_h
-    }
-    is (PEMuxSel.D) {
-      a := io.in_d
-    }
-    // is (PEMuxSel.REG) {
-    //   a := double_buffer.io.r
-    // }
-    is (PEMuxSel.ZERO) {
-      a := interconnectConfig.interPEType.zero
-    }
-    is (PEMuxSel.IDENTITY) {
-      a := interconnectConfig.interPEType.identity
-    }
-  }
-  // End Multiplexer A
+  // Multiplexer B
+  val mux_b_mapping = interconnectConfig.allowed_sel_b.map(x => x.asUInt -> PEMuxDict(x))
+  b := MuxLookup(sel_b.asUInt, mux_b_mapping.last._2, mux_b_mapping)
 
+  // Multiplexer C
+  val mux_c_mapping = interconnectConfig.allowed_sel_c.map(x => x.asUInt -> PEMuxDict(x))
+  c := MuxLookup(sel_c.asUInt, mux_c_mapping.last._2, mux_c_mapping)
 
-  // Begin Multiplexer B
-  // default for mux_b
-  b := interconnectConfig.interPEType.identity
-
-  switch (sel_b) {
-    is (PEMuxSel.V_BCAST) {
-      b := io.in_v_bcast
-    }
-    is (PEMuxSel.V) {
-      b := io.in_v
-    }
-    // is (PEMuxSel.H_BCAST) {
-    //   b := io.in_h_bcast
-    // }
-    // is (PEMuxSel.H) {
-    //   b := io.in_h
-    // }
-    // is (PEMuxSel.D) {
-    //   b := io.in_d
-    // }
-    is (PEMuxSel.REG) {
-      b := double_buffer.io.r
-    }
-    is (PEMuxSel.ZERO) {
-      b := interconnectConfig.interPEType.zero
-    }
-    is (PEMuxSel.IDENTITY) {
-      b := interconnectConfig.interPEType.identity
-    }
-  }
-  // End Multiplexer B
-
-
-  // Begin Multiplexer C
-  // default for mux_c
-  c := interconnectConfig.interPEType.identity
-
-  switch (sel_c) {
-    // is (PEMuxSel.V_BCAST) {
-    //   c := io.in_v_bcast
-    // }
-    is (PEMuxSel.V) {
-      c := io.in_v
-    }
-    // is (PEMuxSel.H_BCAST) {
-    //   c := io.in_h_bcast
-    // }
-    is (PEMuxSel.H) {
-      c := io.in_h
-    }
-    is (PEMuxSel.D) {
-      c := io.in_d
-    }
-    is (PEMuxSel.REG) {
-      c := double_buffer.io.r
-    }
-    is (PEMuxSel.ZERO) {
-      c := interconnectConfig.interPEType.zero
-    }
-    is (PEMuxSel.IDENTITY) {
-      c := interconnectConfig.interPEType.identity
-    }
-  }
-  // End Multiplexer C
-
-  // Begin Multiplexer Q
-  // default for mux_q
-  q := interconnectConfig.interPEType.identity
-
-  switch (sel_q) {
-    // is (PEMuxSel.V_BCAST) {
-    //   q := io.in_v_bcast
-    // }
-    is (PEMuxSel.V) {
-      q := io.in_v
-    }
-    // is (PEMuxSel.H_BCAST) {
-    //   q := io.in_h_bcast
-    // }
-    is (PEMuxSel.H) {
-      q := io.in_h
-    }
-    is (PEMuxSel.D) {
-      q := io.in_d
-    }
-    // is (PEMuxSel.REG) {
-    //   q := double_buffer.io.r
-    // }
-    // is (PEMuxSel.ZERO) {
-    //   q := interconnectConfig.interPEType.zero
-    // }
-    // is (PEMuxSel.IDENTITY) {
-    //   q := interconnectConfig.interPEType.identity
-    // }
-  }
-  // End Multiplexer Q
+  // Multiplexer Q
+  val mux_q_mapping = interconnectConfig.allowed_sel_q.map(x => x.asUInt -> PEMuxDict(x))
+  q := MuxLookup(sel_q.asUInt, mux_q_mapping.last._2, mux_q_mapping)
 
 }

@@ -15,13 +15,13 @@ class Mesh[T <: Data: Arithmetic]
 
 
   val io = IO(new Bundle {
-    val in_h_bcast = Input(Vec(meshRows, interconnectConfig.horizontalBroadcastType))
-    val in_v_bcast = Input(Vec(meshColumns, interconnectConfig.verticalBroadcastType))
+    val in_h_grid = Input(Vec(meshRows, interconnectConfig.horizontalGridType))
+    val in_v_grid = Input(Vec(meshColumns, interconnectConfig.verticalGridType))
     val in_v = Input(Vec(meshColumns, interconnectConfig.interPEType))
     val in_h = Input(Vec(meshRows, interconnectConfig.interPEType))
 
-    val out_h_bcast = Output(Vec(meshRows, interconnectConfig.horizontalBroadcastType)) // do i need this?
-    val out_v_bcast = Output(Vec(meshColumns, interconnectConfig.verticalBroadcastType)) //do i need this?
+    val out_h_grid = Output(Vec(meshRows, interconnectConfig.horizontalGridType)) // do i need this?
+    val out_v_grid = Output(Vec(meshColumns, interconnectConfig.verticalGridType)) //do i need this?
     val out = Output(Vec(meshColumns, interconnectConfig.interPEType))
 
     val valid = Input(Bool())
@@ -54,27 +54,27 @@ class Mesh[T <: Data: Arithmetic]
 
   // connect horizontal inputs / outputs
   for (r <- 0 until meshRows) {
-    mesh(r)(0).io.in_h_bcast := io.in_h_bcast(r)
+    mesh(r)(0).io.in_h_grid := io.in_h_grid(r)
     mesh(r)(0).io.in_h := io.in_h(r)
     mesh(r)(0).io.in_d := 0.U.asTypeOf(interconnectConfig.interPEType)
-    io.out_h_bcast(r) := pipe(valid_cycle, mesh(r).last.io.out_h_bcast, 1) //do i need this?
+    io.out_h_grid(r) := pipe(valid_cycle, mesh(r).last.io.out_h_grid, 1) //do i need this?
   }
 
   // connect vertical inputs / outputs
   for (c <- 0 until meshColumns) {
-    mesh(0)(c).io.in_v_bcast := io.in_v_bcast(c)
+    mesh(0)(c).io.in_v_grid := io.in_v_grid(c)
     mesh(0)(c).io.in_v := io.in_v(c)
     if (c > 0) mesh(0)(c).io.in_d := 0.U.asTypeOf(interconnectConfig.interPEType)
-    io.out_v_bcast(c) := pipe(valid_cycle, mesh.last(c).io.out_v_bcast, 1) //do i need this?
+    io.out_v_grid(c) := pipe(valid_cycle, mesh.last(c).io.out_v_grid, 1) //do i need this?
     io.out(c) := pipe(valid_cycle, mesh.last(c).io.out, 1)
   }
 
   for (r <- 0 until meshRows) {
     for (c <- 0 until meshColumns) {
       // data lines
-      if (r > 0) mesh(r)(c).io.in_v_bcast := Mux(io.rcfg_active, pipe(io.rcfg_active, mesh(r - 1)(c).io.out_v_bcast, 1), pipe(valid_cycle, mesh(r - 1)(c).io.out_v_bcast, 1)) // V_BCAST and configuration
+      if (r > 0) mesh(r)(c).io.in_v_grid := Mux(io.rcfg_active, pipe(io.rcfg_active, mesh(r - 1)(c).io.out_v_grid, 1), pipe(valid_cycle, mesh(r - 1)(c).io.out_v_grid, 1)) // V_GRID and configuration
       if (r > 0) mesh(r)(c).io.in_v := pipe(valid_cycle, mesh(r - 1)(c).io.out, 1) // V
-      if (c > 0) mesh(r)(c).io.in_h_bcast := pipe(valid_cycle, mesh(r)(c - 1).io.out_h_bcast, 1) // H_BCAST
+      if (c > 0) mesh(r)(c).io.in_h_grid := pipe(valid_cycle, mesh(r)(c - 1).io.out_h_grid, 1) // H_GRID
       if (c > 0) mesh(r)(c).io.in_h := pipe(valid_cycle, mesh(r)(c - 1).io.out, 1) // H
       if (r > 0 && c > 0) mesh(r)(c).io.in_d := pipe(valid_cycle, mesh(r - 1)(c - 1).io.out, 1) // D
 

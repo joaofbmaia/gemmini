@@ -11,13 +11,13 @@ class MeshWrapper[T <: Data: Arithmetic](meshRows: Int, meshColumns: Int, interc
         val sequencer_reset = Input(Bool())
 
         // mesh IO
-        val in_h_bcast = Input(Vec(meshRows, interconnectConfig.horizontalBroadcastType))
-        val in_v_bcast = Input(Vec(meshColumns, interconnectConfig.verticalBroadcastType))
+        val in_h_grid = Input(Vec(meshRows, interconnectConfig.horizontalGridType))
+        val in_v_grid = Input(Vec(meshColumns, interconnectConfig.verticalGridType))
         val in_v = Input(Vec(meshColumns, interconnectConfig.interPEType))
         val in_h = Input(Vec(meshRows, interconnectConfig.interPEType))
 
-        val out_h_bcast = Output(Vec(meshRows, interconnectConfig.horizontalBroadcastType)) // do i need this?
-        val out_v_bcast = Output(Vec(meshColumns, interconnectConfig.verticalBroadcastType)) //do i need this?
+        val out_h_grid = Output(Vec(meshRows, interconnectConfig.horizontalGridType)) // do i need this?
+        val out_v_grid = Output(Vec(meshColumns, interconnectConfig.verticalGridType)) //do i need this?
         val out = Output(Vec(meshColumns, interconnectConfig.interPEType))
 
         // reconfiguration
@@ -36,12 +36,12 @@ class MeshWrapper[T <: Data: Arithmetic](meshRows: Int, meshColumns: Int, interc
       // mesh external IO
       mesh.io.valid := io.cycle_fire && rcfg_controller.io.done
 
-      mesh.io.in_h_bcast := io.in_h_bcast
-      mesh.io.in_v_bcast := io.in_v_bcast
+      mesh.io.in_h_grid := io.in_h_grid
+      mesh.io.in_v_grid := io.in_v_grid
       mesh.io.in_v := io.in_v
       mesh.io.in_h := io.in_h
-      io.out_h_bcast := mesh.io.out_h_bcast
-      io.out_v_bcast := mesh.io.out_v_bcast
+      io.out_h_grid := mesh.io.out_h_grid
+      io.out_v_grid := mesh.io.out_v_grid
       io.out := mesh.io.out
 
       // sequencer to mesh
@@ -52,7 +52,7 @@ class MeshWrapper[T <: Data: Arithmetic](meshRows: Int, meshColumns: Int, interc
       sequencer.io.rcfg := rcfg_controller.io.sequencer_rcfg
       sequencer.io.row_select := rcfg_controller.io.sequencer_row_select
       for (c <- 0 until meshColumns) {
-        sequencer.io.write_data(c) := io.in_v_bcast(c).asUInt
+        sequencer.io.write_data(c) := io.in_v_grid(c).asUInt
       }
 
       // mesh rcfg

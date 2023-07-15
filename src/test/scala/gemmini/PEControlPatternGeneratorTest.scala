@@ -12,8 +12,8 @@ class PEControlPatternGeneratorTest extends AnyFlatSpec with ChiselScalatestTest
     val controlPatternTableSize = 4
 
     val OS_control_set_COMP = (new ModPEControl(interconnectConfig)).Lit(
-      _.sel_a -> PEMuxSel.H_BCAST,
-      _.sel_b -> PEMuxSel.V_BCAST,
+      _.sel_a -> PEMuxSel.H_GRID,
+      _.sel_b -> PEMuxSel.V_GRID,
       _.sel_c -> PEMuxSel.REG,
       _.sel_q -> PEMuxSel.V,
       _.fu_control.big_alu_sel -> BigALUSel.MUL,
@@ -22,12 +22,14 @@ class PEControlPatternGeneratorTest extends AnyFlatSpec with ChiselScalatestTest
       _.fu_control.sel_m -> MMuxSel.BIG_ALU,
       _.fu_control.shift -> 0.U,
       _.fu_control.small_alu_sel -> SmallALUSel.ADD,
-      _.use_double_buffer -> true.B,
+      _.sel_out_v_grid -> OutGridMuxSel.FORWARD,
+      _.sel_out_h_grid -> OutGridMuxSel.FORWARD,
+      _.sel_out -> OutMuxSel.REG,
       _.double_buffer_sel -> 0.U)
 
     val OS_control_set_PROP = (new ModPEControl(interconnectConfig)).Lit(
-      _.sel_a -> PEMuxSel.H_BCAST,
-      _.sel_b -> PEMuxSel.V_BCAST,
+      _.sel_a -> PEMuxSel.H_GRID,
+      _.sel_b -> PEMuxSel.V_GRID,
       _.sel_c -> PEMuxSel.REG,
       _.sel_q -> PEMuxSel.V,
       _.fu_control.big_alu_sel -> BigALUSel.MUL,
@@ -36,7 +38,9 @@ class PEControlPatternGeneratorTest extends AnyFlatSpec with ChiselScalatestTest
       _.fu_control.sel_m -> MMuxSel.BIG_ALU,
       _.fu_control.shift -> 0.U,
       _.fu_control.small_alu_sel -> SmallALUSel.ADD,
-      _.use_double_buffer -> true.B,
+      _.sel_out_v_grid -> OutGridMuxSel.FORWARD,
+      _.sel_out_h_grid -> OutGridMuxSel.FORWARD,
+      _.sel_out -> OutMuxSel.REG,
       _.double_buffer_sel -> 1.U)
 
     test(new PEControlPatternGenerator(interconnectConfig, controlPatternTableSize)) { dut =>

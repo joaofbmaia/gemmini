@@ -20,8 +20,7 @@ class MeshTest extends AnyFlatSpec with ChiselScalatestTester {
     val meshRows = 2
     val meshColumns = 2
 
-    val bitstream = Source.fromFile("/home/asuka/thesis/chipyard/generators/gemmini/OS_GEMM_bit_mesh.bin").map(_.toByte).grouped(4)
-    
+    val bitstream = Source.fromFile("/home/asuka/thesis/chipyard/generators/gemmini/OS_GEMM_2x2_bit_full.bin", "ISO8859-1").map(_.toByte).grouped(4)
     (new ChiselStage).emitVerilog(new MeshWrapper(meshRows, meshColumns, interconnectConfig, sequenceTableSize, controlPatternTableSize))
     test(new MeshWrapper(meshRows, meshColumns, interconnectConfig, sequenceTableSize, controlPatternTableSize)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
         // lets write the configuration
@@ -35,7 +34,7 @@ class MeshTest extends AnyFlatSpec with ChiselScalatestTester {
 
         for (i <- 0 until config_cycles) {
           for (c <- 0 until meshColumns) {
-            dut.io.in_v_bcast(c).poke(BigInt(bitstream.next().toArray))
+            dut.io.in_v_grid(c).poke(BigInt(bitstream.next().toArray))
           }
           dut.clock.step(1)
         }
@@ -56,16 +55,16 @@ class MeshTest extends AnyFlatSpec with ChiselScalatestTester {
         dut.io.in_v(1).poke(12) // d22
         dut.clock.step(1)
         dut.io.in_v(1).poke(10) // d12
-        dut.io.in_v_bcast(0).poke(5) // b11
-        dut.io.in_h_bcast(0).poke(1) // a11
+        dut.io.in_v_grid(0).poke(5) // b11
+        dut.io.in_h_grid(0).poke(1) // a11
         dut.clock.step(1)
-        dut.io.in_v_bcast(0).poke(7) // b21
-        dut.io.in_v_bcast(1).poke(6) // b12
-        dut.io.in_h_bcast(0).poke(2) // a12
-        dut.io.in_h_bcast(1).poke(3) // a21
+        dut.io.in_v_grid(0).poke(7) // b21
+        dut.io.in_v_grid(1).poke(6) // b12
+        dut.io.in_h_grid(0).poke(2) // a12
+        dut.io.in_h_grid(1).poke(3) // a21
         dut.clock.step(1)
-        dut.io.in_v_bcast(1).poke(8) // b22
-        dut.io.in_h_bcast(1).poke(4) // a22
+        dut.io.in_v_grid(1).poke(8) // b22
+        dut.io.in_h_grid(1).poke(4) // a22
         dut.clock.step(2)
         dut.io.out(0).expect(54) // c21
         dut.clock.step(1)

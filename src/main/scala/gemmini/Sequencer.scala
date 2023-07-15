@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 
 class Sequencer[T <: Data](interconnectConfig : InterconnectConfig[T], sequenceTableSize: Int, controlPatternTableSize: Int, meshRows: Int, meshColumns: Int) extends Module { 
-  val sequencing_elements: Seq[Seq[SequencingElement]] = Seq.fill(meshRows, meshColumns)(Module(new SequencingElement(sequenceTableSize, controlPatternTableSize, interconnectConfig.verticalBroadcastType.getWidth)))
+  val sequencing_elements: Seq[Seq[SequencingElement]] = Seq.fill(meshRows, meshColumns)(Module(new SequencingElement(sequenceTableSize, controlPatternTableSize, interconnectConfig.verticalGridType.getWidth)))
   val se_line_coalescer_word_sel_width = sequencing_elements(0)(0).se_line_coalescer.word_sel_width
 
   val io = IO(new Bundle {
@@ -20,7 +20,7 @@ class Sequencer[T <: Data](interconnectConfig : InterconnectConfig[T], sequenceT
     // reconfiguration
     val rcfg = Input(new TableReconfigurationControl(sequenceTableSize, se_line_coalescer_word_sel_width))
     val row_select = Input(UInt(log2Ceil(meshRows).W))
-    val write_data = Input(Vec(meshColumns, UInt(interconnectConfig.verticalBroadcastType.getWidth.W)))
+    val write_data = Input(Vec(meshColumns, UInt(interconnectConfig.verticalGridType.getWidth.W)))
   })
 
 
