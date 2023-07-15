@@ -240,6 +240,9 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
       dut.io.control.fu_control.minus_a.poke(false)
       dut.io.control.fu_control.minus_m.poke(false)
 
+      dut.io.control.reg_p_en.poke(true)
+      dut.io.control.reg_q_en.poke(true)
+
       dut.io.control.sel_out.poke(OutMuxSel.REG)
       dut.io.control.double_buffer_sel.poke(0.U)
       dut.io.valid.poke(true)
@@ -287,6 +290,9 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
       dut.io.control.fu_control.sel_m.poke(MMuxSel.BIG_ALU)
       dut.io.control.fu_control.minus_a.poke(false)
       dut.io.control.fu_control.minus_m.poke(true)
+
+      dut.io.control.reg_p_en.poke(true)
+      dut.io.control.reg_q_en.poke(true)
 
       dut.io.control.sel_out.poke(OutMuxSel.REG)
       dut.io.control.double_buffer_sel.poke(0.U)
