@@ -57,7 +57,7 @@ class Mesh[T <: Data: Arithmetic]
     mesh(r)(0).io.in_h_grid := io.in_h_grid(r)
     mesh(r)(0).io.in_h := io.in_h(r)
     mesh(r)(0).io.in_d := 0.U.asTypeOf(interconnectConfig.interPEType)
-    io.out_h_grid(r) := pipe(valid_cycle, mesh(r).last.io.out_h_grid, 1) //do i need this?
+    io.out_h_grid(r) := mesh(r).last.io.out_h_grid //do i need this?
   }
 
   // connect vertical inputs / outputs
@@ -65,8 +65,8 @@ class Mesh[T <: Data: Arithmetic]
     mesh(0)(c).io.in_v_grid := io.in_v_grid(c)
     mesh(0)(c).io.in_v := io.in_v(c)
     if (c > 0) mesh(0)(c).io.in_d := 0.U.asTypeOf(interconnectConfig.interPEType)
-    io.out_v_grid(c) := pipe(valid_cycle, mesh.last(c).io.out_v_grid, 1) //do i need this?
-    io.out(c) := pipe(valid_cycle, mesh.last(c).io.out, 1)
+    io.out_v_grid(c) := mesh.last(c).io.out_v_grid //do i need this?
+    io.out(c) := mesh.last(c).io.out
   }
 
   for (r <- 0 until meshRows) {

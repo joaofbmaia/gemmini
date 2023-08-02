@@ -5,11 +5,11 @@ import chisel3.util._
 import chisel3.experimental.ChiselEnum
 
 object BigALUSel extends ChiselEnum {
-  val MUL, ADD, SUB = Value
+  val MUL, ADD, SUB, RES0 = Value
 }
 
 object SmallALUSel extends ChiselEnum {
-  val ADD, SUB, MAX3, MIN3, EQ3, NEQ3 = Value
+  val ADD, SUB, MAX3, MIN3, EQ3, NEQ3, RES0, RES1 = Value
 }
 
 object MMuxSel extends ChiselEnum {
