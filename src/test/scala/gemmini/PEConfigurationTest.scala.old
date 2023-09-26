@@ -1,0 +1,65 @@
+package gemmini
+
+import chisel3._
+import chiseltest._
+import org.scalatest.flatspec.AnyFlatSpec
+import gemmini.PEConfiguration
+
+class PEConfigurationTest extends AnyFlatSpec with ChiselScalatestTester {
+  "PEConfiguration" should "output the correct configuration for index 0" in {
+    // Define the configuration table size
+    val configTableSize = 2
+
+    // Create a new instance of the PEConfiguration module
+    test(new PEConfiguration(CommonInterconnectConfigs.DefaultICConfig, configTableSize)) { dut =>
+      // Set input values
+      dut.io.configuration_index.poke(0.U)
+      dut.io.write_enable.poke(false.B)
+
+      // Wait for a few cycles for the output to stabilize
+      dut.clock.step(1)
+
+      // Verify the expected output values for the given input
+      dut.io.pe_control.sel_a.expect(PEMuxSel.H_BCAST)
+      dut.io.pe_control.sel_b.expect(PEMuxSel.V_BCAST)
+      dut.io.pe_control.sel_c.expect(PEMuxSel.REG)
+      dut.io.pe_control.sel_q.expect(PEMuxSel.V)
+      dut.io.pe_control.fu_control.big_alu_sel.expect(BigALUSel.MUL)
+      dut.io.pe_control.fu_control.minus_a.expect(false.B)
+      dut.io.pe_control.fu_control.minus_m.expect(false.B)
+      dut.io.pe_control.fu_control.sel_m.expect(MMuxSel.BIG_ALU)
+      dut.io.pe_control.fu_control.shift.expect(0.U)
+      dut.io.pe_control.fu_control.small_alu_sel.expect(SmallALUSel.ADD)
+      dut.io.pe_control.use_double_buffer.expect(true.B)
+      dut.io.pe_control.double_buffer_sel.expect(false.B)
+    }
+  }
+
+  it should "output the correct configuration for index 1" in {
+    // Define the configuration table size
+    val configTableSize = 2
+
+    // Create a new instance of the PEConfiguration module
+    test(new PEConfiguration(CommonInterconnectConfigs.DefaultICConfig, configTableSize)) { dut =>
+      // Set input values
+      dut.io.configuration_index.poke(1.U)
+
+      // Wait for a few cycles for the output to stabilize
+      dut.clock.step(1)
+
+      // Verify the expected output values for the given input
+      dut.io.pe_control.sel_a.expect(PEMuxSel.H_BCAST)
+      dut.io.pe_control.sel_b.expect(PEMuxSel.V_BCAST)
+      dut.io.pe_control.sel_c.expect(PEMuxSel.REG)
+      dut.io.pe_control.sel_q.expect(PEMuxSel.V)
+      dut.io.pe_control.fu_control.big_alu_sel.expect(BigALUSel.MUL)
+      dut.io.pe_control.fu_control.minus_a.expect(false.B)
+      dut.io.pe_control.fu_control.minus_m.expect(false.B)
+      dut.io.pe_control.fu_control.sel_m.expect(MMuxSel.BIG_ALU)
+      dut.io.pe_control.fu_control.shift.expect(0.U)
+      dut.io.pe_control.fu_control.small_alu_sel.expect(SmallALUSel.ADD)
+      dut.io.pe_control.use_double_buffer.expect(true.B)
+      dut.io.pe_control.double_buffer_sel.expect(true.B)
+    }
+  }
+}

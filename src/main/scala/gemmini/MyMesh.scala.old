@@ -1,0 +1,94 @@
+package gemmini
+
+import chisel3._
+import chisel3.util._
+import chisel3.experimental._
+
+
+class MyMesh[T <: Data: Arithmetic]
+  (interconnectConfig : InterconnectConfig[T], configTableSize: Int,
+   meshRows: Int, meshColumns: Int)
+  extends Module {
+
+  assert(meshRows == meshColumns)
+  val block_size = meshRows
+
+
+  val io = IO(new Bundle {
+    val in_a = Vec(meshRows, interconnectConfig.horizontalBroadcastType)
+    val in_b = Vec(meshColumns, interconnectConfig.verticalBroadcastType)
+    val in_d = Vec(meshColumns, interconnectConfig.interPEType)
+
+    val out_a = Vec(meshRows, interconnectConfig.horizontalBroadcastType)
+    val out_b = Vec(meshColumns, interconnectConfig.verticalBroadcastType)
+    val out_c = Vec(meshColumns, interconnectConfig.interPEType)
+
+    val valid = Input(Bool())
+    // mesh is always ready :)
+
+    val configuration_indexes = Input(Vec(meshRows, Vec(meshColumns, UInt(log2Ceil(configTableSize).W))))
+    val configuration_we = Input(Vec(meshRows, Vec(meshColumns, Bool())))
+  })
+
+  val valid_cycle = Wire(Bool())
+  valid_cycle := io.valid
+
+  // mesh(r)(c) => Tile at row r, column c
+  val mesh: Seq[Seq[MyPE[T]]] = Seq.fill(meshRows, meshColumns)(Module(new MyPE(interconnectConfig, configTableSize)))
+  val meshT = mesh.transpose
+
+  def pipe[T <: Data](valid: Bool, t: T, latency: Int): T = {
+    // The default "Pipe" function apparently resets the valid signals to false.B. We would like to avoid using global
+    // signals in the Mesh, so over here, we make it clear that the reset signal will never be asserted
+    chisel3.withReset(false.B) { Pipe(valid, t, latency).bits }
+  }
+
+  // pipeline a across each row
+  for (r <- 0 until meshRows) {
+    mesh(r).foldLeft(io.in_a(r)) {
+      case (in_a, pe) =>
+        pe.io.in_a := pipe(valid_cycle, in_a, 1)
+        pe.io.out_a
+    }
+  }
+
+  // pipeline b across each column
+  for (c <- 0 until meshColumns) {
+    meshT(c).foldLeft(io.in_b(c)) {
+      case (in_b, pe) =>
+        pe.io.in_b := pipe(valid_cycle, in_b, 1)
+        pe.io.out_b
+    }
+  }
+
+  // pipeline output across each column
+  for (c <- 0 until meshColumns) {
+    meshT(c).foldLeft(io.in_d(c)) {
+      case (out_c, pe) =>
+        pe.io.in_d := pipe(valid_cycle, out_c, 1)
+        pe.io.out_c
+    }
+  }
+
+  // connect configuration setup singnals
+  for (r <- 0 until meshRows) {
+    for (c <- 0 until meshColumns) {
+      mesh(r)(c).io.configuration_write_enable := io.configuration_we(r)(c)
+      mesh(r)(c).io.configuration_index := io.configuration_indexes(r)(c)
+
+      mesh(r)(c).io.in_valid := valid_cycle
+    }
+  }
+
+  // connect horizontal outputs
+  for (r <- 0 until meshRows) {
+    io.out_a(r) := pipe(valid_cycle, mesh.last(r).io.out_a, 1)
+  }
+
+  // connect vertical outputs
+  for (c <- 0 until meshColumns) {
+    io.out_b(c) := pipe(valid_cycle, meshT.last(c).io.out_b, 1)
+    io.out_c(c) := pipe(valid_cycle, meshT.last(c).io.out_c, 1)
+  }
+}
+

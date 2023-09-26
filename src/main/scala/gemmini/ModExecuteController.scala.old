@@ -1,0 +1,73 @@
+
+package gemmini
+
+import chisel3._
+import chisel3.util._
+import GemminiISA._
+import Util._
+import freechips.rocketchip.config.Parameters
+import midas.targetutils.PerfCounter
+
+
+class ModExecuteController[T <: Data, U <: Data, V <: Data](xLen: Int, tagWidth: Int, config: GemminiArrayConfig[T, U, V])
+                                  (implicit p: Parameters, ev: Arithmetic[T]) extends Module {
+  import config._
+  import ev._
+
+  val io = IO(new Bundle {
+    val cmd = Flipped(Decoupled(new GemminiCmd(reservation_station_entries)))
+
+    val im2col = new Bundle {
+      val req = Decoupled(new Im2ColReadReq(config))
+      val resp = Flipped(Decoupled(new Im2ColReadResp(config)))
+    }
+
+    val srams = new Bundle {
+      val read = Vec(sp_banks, new ScratchpadReadIO(sp_bank_entries, sp_width))
+      val write = Vec(sp_banks, new ScratchpadWriteIO(sp_bank_entries, sp_width, (sp_width / (aligned_to * 8)) max 1))
+    }
+
+    val acc = new Bundle {
+      val read_req = Vec(acc_banks, Decoupled(new AccumulatorReadReq(
+          acc_bank_entries, accType, acc_scale_t
+      )))
+
+      val read_resp = Flipped(Vec(acc_banks, Decoupled(new AccumulatorScaleResp(
+        Vec(meshColumns, Vec(tileColumns, inputType)),
+        Vec(meshColumns, Vec(tileColumns, accType))
+      ))))
+
+      // val write = Vec(acc_banks, new AccumulatorWriteIO(acc_bank_entries, Vec(meshColumns, Vec(tileColumns, accType))))
+      val write = Vec(acc_banks, Decoupled(new AccumulatorWriteReq(acc_bank_entries, Vec(meshColumns, Vec(tileColumns, accType)))))
+    }
+
+  })
+
+  val mesh = Module(new MyMesh(CommonInterconnectConfigs.DefaultICConfig, 2, meshRows, meshColumns))
+
+  val in_a_valid = Wire(Bool())
+  val in_b_valid = Wire(Bool())
+  val in_d_valid = Wire(Bool())
+
+  val all_inputs_valid = Wire(Bool())
+
+  val out_a_ready = Wire(Bool())
+  val out_b_ready = Wire(Bool())
+  val out_c_ready = Wire(Bool())
+
+  val all_outputs_ready = Wire(Bool())
+
+  val valid = Wire(Bool())
+
+  val cycle_fire = Wire(Bool())
+
+  all_inputs_valid := in_a_valid && in_b_valid && in_d_valid
+  all_outputs_ready := out_a_ready && out_b_ready && out_c_ready
+
+  cycle_fire := valid && all_inputs_valid && all_outputs_ready
+
+  mesh.io.valid := cycle_fire
+
+
+
+}

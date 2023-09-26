@@ -1,0 +1,48 @@
+package gemmini
+
+import chisel3._
+import chisel3.util._
+import gemmini.PEConfiguration
+
+
+/**
+  * PE wrapper for testing
+  * use b as configuration source. configuration is in LSB of B
+  */
+class MyPE[T <: Data](interconnectConfig : InterconnectConfig[T], configTableSize: Int)
+                   (implicit ev: Arithmetic[T]) extends Module { // Debugging variables
+  import ev._
+
+  val io = IO(new Bundle {
+    val in_a = Input(interconnectConfig.horizontalBroadcastType)
+    val in_b = Input(interconnectConfig.verticalBroadcastType)
+    val in_d = Input(interconnectConfig.interPEType)
+    val out_a = Output(interconnectConfig.horizontalBroadcastType)
+    val out_b = Output(interconnectConfig.verticalBroadcastType)
+    val out_c = Output(interconnectConfig.interPEType)
+
+    val in_valid = Input(Bool())
+    val configuration_index = Input(UInt(log2Ceil(configTableSize).W))
+    val configuration_write_enable = Input(Bool())
+  })
+  val mod_pe = Module(new ModPE(interconnectConfig))
+  val config = Module(new PEConfiguration(interconnectConfig, configTableSize))
+
+  val valid = io.in_valid
+
+  mod_pe.io.in_v_bcast := io.in_b
+  mod_pe.io.in_h_bcast := io.in_a
+  io.out_b := mod_pe.io.out_v_bcast
+  io.out_a := mod_pe.io.out_h_bcast
+  mod_pe.io.in_v := io.in_d
+  mod_pe.io.in_h := 0.S
+  mod_pe.io.in_d := 0.S
+  io.out_c := mod_pe.io.out
+  mod_pe.io.valid := valid
+
+  mod_pe.io.control := config.io.pe_control
+  config.io.configuration_index := io.configuration_index
+  assert(interconnectConfig.verticalBroadcastType.getWidth >= (new ModPEControl(interconnectConfig)).getWidth, "vertical broadcast line not wide enough for configuration word")
+  config.io.write_port := io.in_b.asUInt.asTypeOf(new ModPEControl(interconnectConfig))
+  config.io.write_enable := io.configuration_write_enable
+}

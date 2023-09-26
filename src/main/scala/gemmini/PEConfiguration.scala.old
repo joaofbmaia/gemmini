@@ -1,0 +1,85 @@
+package gemmini
+
+import chisel3._
+import chisel3.util._
+
+class PEConfiguration[T <: Data](interconnectConfig : InterconnectConfig[T], configTableSize: Int) extends Module { 
+
+  val io = IO(new Bundle {
+    val pe_control = Output(new ModPEControl(interconnectConfig))
+    val configuration_index = Input(UInt(log2Ceil(configTableSize).W))
+    val write_port = Input(new ModPEControl(interconnectConfig))
+    val write_enable = Input(Bool())
+  })
+
+  // harcoding for testing
+  val OS_control_set_COMP = Wire(new ModPEControl(interconnectConfig))
+  OS_control_set_COMP.sel_a := PEMuxSel.H_BCAST
+  OS_control_set_COMP.sel_b := PEMuxSel.V_BCAST
+  OS_control_set_COMP.sel_c := PEMuxSel.REG
+  OS_control_set_COMP.sel_q := PEMuxSel.V
+  OS_control_set_COMP.fu_control.big_alu_sel := BigALUSel.MUL
+  OS_control_set_COMP.fu_control.minus_a := false.B
+  OS_control_set_COMP.fu_control.minus_m := false.B
+  OS_control_set_COMP.fu_control.sel_m := MMuxSel.BIG_ALU
+  OS_control_set_COMP.fu_control.shift := 0.U
+  OS_control_set_COMP.fu_control.small_alu_sel := SmallALUSel.ADD
+  OS_control_set_COMP.use_double_buffer := true.B
+  OS_control_set_COMP.double_buffer_sel := false.B
+
+  val OS_control_set_PROP = Wire(new ModPEControl(interconnectConfig))
+  OS_control_set_PROP.sel_a := PEMuxSel.H_BCAST
+  OS_control_set_PROP.sel_b := PEMuxSel.V_BCAST
+  OS_control_set_PROP.sel_c := PEMuxSel.REG
+  OS_control_set_PROP.sel_q := PEMuxSel.V
+  OS_control_set_PROP.fu_control.big_alu_sel := BigALUSel.MUL
+  OS_control_set_PROP.fu_control.minus_a := false.B
+  OS_control_set_PROP.fu_control.minus_m := false.B
+  OS_control_set_PROP.fu_control.sel_m := MMuxSel.BIG_ALU
+  OS_control_set_PROP.fu_control.shift := 0.U
+  OS_control_set_PROP.fu_control.small_alu_sel := SmallALUSel.ADD
+  OS_control_set_PROP.use_double_buffer := true.B
+  OS_control_set_PROP.double_buffer_sel := true.B
+
+  //does not work :)
+  val WS_control_set = Wire(new ModPEControl(interconnectConfig))
+  WS_control_set.sel_a := PEMuxSel.H_BCAST
+  WS_control_set.sel_b := PEMuxSel.REG
+  WS_control_set.sel_c := PEMuxSel.V
+  WS_control_set.sel_q := PEMuxSel.V
+  WS_control_set.fu_control.big_alu_sel := BigALUSel.MUL
+  WS_control_set.fu_control.minus_a := false.B
+  WS_control_set.fu_control.minus_m := false.B
+  WS_control_set.fu_control.sel_m := MMuxSel.BIG_ALU
+  WS_control_set.fu_control.shift := 0.U
+  WS_control_set.fu_control.small_alu_sel := SmallALUSel.ADD
+  WS_control_set.use_double_buffer := true.B
+  WS_control_set.double_buffer_sel := false.B //this is wrong hihi
+
+    //does not work :)
+  val COL_MAX_control_set = Wire(new ModPEControl(interconnectConfig))
+  COL_MAX_control_set.sel_a := PEMuxSel.V_BCAST
+  COL_MAX_control_set.sel_b := PEMuxSel.REG
+  COL_MAX_control_set.sel_c := PEMuxSel.REG
+  COL_MAX_control_set.sel_q := PEMuxSel.V
+  COL_MAX_control_set.fu_control.big_alu_sel := BigALUSel.MUL
+  COL_MAX_control_set.fu_control.minus_a := false.B
+  COL_MAX_control_set.fu_control.minus_m := false.B
+  COL_MAX_control_set.fu_control.sel_m := MMuxSel.A
+  COL_MAX_control_set.fu_control.shift := 0.U
+  COL_MAX_control_set.fu_control.small_alu_sel := SmallALUSel.MAX3
+  COL_MAX_control_set.use_double_buffer := true.B
+  COL_MAX_control_set.double_buffer_sel := false.B  //this is wrong hihi
+
+  val config_mem = Mem(configTableSize, new ModPEControl(interconnectConfig))
+
+  // when(io.write_enable) {
+  //   config_mem(io.configuration_index) := io.write_port
+  // }
+
+  // hardcoding for testing
+  config_mem(0.U) := OS_control_set_COMP
+  config_mem(1.U) := OS_control_set_PROP
+
+  io.pe_control := config_mem(io.configuration_index)
+}

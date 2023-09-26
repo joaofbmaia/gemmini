@@ -1,0 +1,45 @@
+package gemmini
+
+import chisel3._
+import chiseltest._
+import org.scalatest.flatspec.AnyFlatSpec
+import chisel3.experimental.BundleLiterals._
+import chiseltest.experimental.{expose}
+import gemmini.MyPE
+
+class MyPETest extends AnyFlatSpec with ChiselScalatestTester {
+  "MyPE" should "correctly process inputs and generate outputs" in {
+    // Define the interconnect configuration and configuration table size
+    val interconnectConfig = CommonInterconnectConfigs.DefaultICConfig
+    val configTableSize = 2
+
+    class TopWrapper extends MyPE(interconnectConfig, configTableSize) {
+      val exposed = expose(mod_pe.io.control.use_double_buffer)
+    }
+
+    // Create a new instance of the MyPE module
+    test(new TopWrapper) { dut =>
+      // Set input values
+      dut.io.configuration_index.poke(0.U)
+      dut.io.in_a.poke(69.S)
+      dut.io.in_b.poke(423.S)
+      dut.io.in_d.poke(37.S)
+      dut.io.in_valid.poke(true.B)
+      println("probe = " + dut.exposed.peekBoolean())
+
+      // Wait for a few cycles for the output to stabilize
+      dut.clock.step(1)
+      println("c = " + dut.io.out_c.peekInt())
+      dut.io.configuration_index.poke(1.U)
+      println("c = " + dut.io.out_c.peekInt())
+
+      // Verify the expected output values for the given inputs
+      dut.clock.step(1)
+
+      println("a = " + dut.io.out_a.peekInt())
+      println("b = " + dut.io.out_b.peekInt())
+      println("c = " + dut.io.out_c.peekInt())
+      println("PE PASS")
+    }
+  }
+}
