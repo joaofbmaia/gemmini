@@ -16,7 +16,7 @@ class ModPEControl[T <: Data/* : Arithmetic*/](interconnectConfig : Interconnect
   val sel_out = OutMuxSel()
   val reg_p_en = Bool()
   val reg_q_en = Bool()
-  val double_buffer_sel = UInt(1.W)
+  val double_buffer_swap = Bool()
 }
 
 object PEMuxSel extends ChiselEnum {
@@ -97,7 +97,7 @@ class ModPE[T <: Data](interconnectConfig : InterconnectConfig[T])
   double_buffer.io.p.bits := fu.io.p
 
   double_buffer.io.q.bits := q
-  double_buffer.io.sel := io.control.double_buffer_sel
+  double_buffer.io.swap := io.control.double_buffer_swap
   double_buffer.io.q.valid := io.valid && io.control.reg_q_en
   double_buffer.io.p.valid := io.valid && io.control.reg_p_en
 

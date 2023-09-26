@@ -244,7 +244,7 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
       dut.io.control.reg_q_en.poke(true)
 
       dut.io.control.sel_out.poke(OutMuxSel.REG)
-      dut.io.control.double_buffer_sel.poke(0.U)
+      dut.io.control.double_buffer_swap.poke(1.U)
       dut.io.valid.poke(true)
 
       dut.clock.step(1)
@@ -253,7 +253,7 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
       dut.io.in_h_grid.poke(A)
       dut.io.in_v.poke(ACC_REG_alt)
 
-      dut.io.control.double_buffer_sel.poke(1.U)
+      dut.io.control.double_buffer_swap.poke(1.U)
 
       dut.clock.step(1)
 
@@ -261,12 +261,12 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
       dut.io.in_h_grid.poke(A_alt)
       dut.io.in_v.poke(0.S)
 
-      dut.io.control.double_buffer_sel.poke(0.U)
+      dut.io.control.double_buffer_swap.poke(1.U)
       dut.io.out.expect(A * B + ACC_REG)
 
       dut.clock.step(1)
 
-      dut.io.control.double_buffer_sel.poke(1.U)
+      dut.io.control.double_buffer_swap.poke(1.U)
       dut.io.out.expect(A_alt * B_alt + ACC_REG_alt)
     }
   }
@@ -295,7 +295,7 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
       dut.io.control.reg_q_en.poke(true)
 
       dut.io.control.sel_out.poke(OutMuxSel.REG)
-      dut.io.control.double_buffer_sel.poke(0.U)
+      dut.io.control.double_buffer_swap.poke(1.U)
       dut.io.valid.poke(true)
 
       dut.clock.step(1)
@@ -304,7 +304,7 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
       dut.io.in_h_grid.poke(A)
       dut.io.in_v.poke(ACC_REG_alt)
 
-      dut.io.control.double_buffer_sel.poke(1.U)
+      dut.io.control.double_buffer_swap.poke(1.U)
 
       dut.clock.step(1)
 
@@ -312,12 +312,12 @@ class ModPETest extends AnyFlatSpec with ChiselScalatestTester{
       dut.io.in_h_grid.poke(A_alt)
       dut.io.in_v.poke(0.S)
 
-      dut.io.control.double_buffer_sel.poke(0.U)
+      dut.io.control.double_buffer_swap.poke(1.U)
       dut.io.out.expect(-(A * B) + ACC_REG)
 
       dut.clock.step(1)
 
-      dut.io.control.double_buffer_sel.poke(1.U)
+      dut.io.control.double_buffer_swap.poke(1.U)
       dut.io.out.expect(-(A_alt * B_alt) + ACC_REG_alt)
     }
   }

@@ -42,6 +42,7 @@ class PE[T <: Data](interconnectConfig : InterconnectConfig[T], controlPatternTa
 
     // reconfiguration
     val rcfg = Input(new TableReconfigurationControl(controlPatternTableSize, cpg_line_coalescer.word_sel_width))
+    val rcfg_active = Input(Bool())
 
   })
   val mod_pe = Module(new ModPE(interconnectConfig))
@@ -52,7 +53,7 @@ class PE[T <: Data](interconnectConfig : InterconnectConfig[T], controlPatternTa
   // ModPE
   mod_pe.io.in_v_grid := io.in_v_grid
   mod_pe.io.in_h_grid := io.in_h_grid
-  io.out_v_grid := mod_pe.io.out_v_grid
+  io.out_v_grid := Mux(io.rcfg_active, io.in_v_grid, mod_pe.io.out_v_grid) //reconfiguration
   io.out_h_grid := mod_pe.io.out_h_grid
   mod_pe.io.in_v := io.in_v
   mod_pe.io.in_h := io.in_h

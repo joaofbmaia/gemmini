@@ -82,6 +82,7 @@ class Mesh[T <: Data: Arithmetic]
       mesh(r)(c).io.new_control_pattern := io.new_control_pattern(r)(c)
       mesh(r)(c).io.in_valid := valid_cycle
       mesh(r)(c).io.rcfg := io.rcfg
+      mesh(r)(c).io.rcfg_active := io.rcfg_active
     }
   }
 }

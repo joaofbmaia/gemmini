@@ -10,19 +10,25 @@ class DoubleBuffer[T <: Data](interconnectConfig : InterconnectConfig[T]) extend
     val q = Input(Valid(interconnectConfig.interPEType))
     val r = Output(interconnectConfig.interPEType)
     val s = Output(interconnectConfig.interPEType)
-    val sel = Input(UInt(1.W))
+    val swap = Input(Bool())
   })
+
+  val selReg = Reg(Bool())
+  selReg := selReg ^ io.swap
+
+  val sel = Wire(Bool())
+  sel := Mux(io.swap, selReg ^ io.swap, selReg)
 
   val A = Wire(Valid(interconnectConfig.interPEType))
   val B = Wire(Valid(interconnectConfig.interPEType))
   val regA = RegEnable(A.bits, A.valid)
   val regB = RegEnable(B.bits, B.valid)
 
-  A := Mux(io.sel.asBool, io.q, io.p)
-  B := Mux(io.sel.asBool, io.p, io.q)
+  A := Mux(sel, io.q, io.p)
+  B := Mux(sel, io.p, io.q)
 
-  io.r := Mux(io.sel.asBool, regB, regA)
-  io.s := Mux(io.sel.asBool, regA, regB)
+  io.r := Mux(sel, regB, regA)
+  io.s := Mux(sel, regA, regB)
 }
 
 // sel = 0 : P -> regA -> R ; Q -> regB -> S
